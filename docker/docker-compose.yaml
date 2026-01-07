@@ -1,0 +1,27 @@
+services:
+  keycloak:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      # Admin credentials
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Development mode settings
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      # Database (using embedded H2 for development)
+      KC_DB: dev-file
+    volumes:
+      # Mount the built JAR for hot-reload during development
+      - ../target/keycloak-minecraft.jar:/opt/keycloak/providers/keycloak-minecraft.jar
+      # Persist H2 database
+      - keycloak-data:/opt/keycloak/data
+    ports:
+      - "8080:8080"
+    command: start-dev
+
+volumes:
+  keycloak-data:
+
