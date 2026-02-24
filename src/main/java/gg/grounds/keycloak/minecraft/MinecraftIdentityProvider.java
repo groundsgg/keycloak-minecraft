@@ -5,12 +5,15 @@ import gg.grounds.keycloak.minecraft.api.MinecraftApi;
 import gg.grounds.keycloak.minecraft.api.XboxAuthApi;
 import org.jboss.logging.Logger;
 import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
+import org.keycloak.broker.provider.AuthenticationRequest;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.events.EventBuilder;
+import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
 
+import jakarta.ws.rs.core.UriBuilder;
 import java.io.IOException;
 
 /**
@@ -154,6 +157,38 @@ public class MinecraftIdentityProvider extends AbstractOAuth2IdentityProvider<Mi
     protected String getProfileEndpointForValidation(EventBuilder event) {
         // We don't use a standard profile endpoint since we call multiple APIs
         return null;
+    }
+
+    @Override
+    protected UriBuilder createAuthorizationUrl(AuthenticationRequest request) {
+        UriBuilder builder = super.createAuthorizationUrl(request);
+        String overrideUri = System.getenv("MINECRAFT_IDP_REDIRECT_URI");
+        if (overrideUri != null && !overrideUri.isBlank()) {
+            builder.replaceQueryParam(OAUTH2_PARAMETER_REDIRECT_URI, overrideUri);
+        }
+        return builder;
+    }
+
+    @Override
+    public Object callback(RealmModel realm, org.keycloak.broker.provider.UserAuthenticationIdentityProvider.AuthenticationCallback callback, EventBuilder event) {
+        return new MinecraftEndpoint(callback, realm, event, this);
+    }
+
+    protected static class MinecraftEndpoint extends Endpoint {
+        public MinecraftEndpoint(org.keycloak.broker.provider.UserAuthenticationIdentityProvider.AuthenticationCallback callback,
+                                  RealmModel realm, EventBuilder event, AbstractOAuth2IdentityProvider<?> provider) {
+            super(callback, realm, event, provider);
+        }
+
+        @Override
+        public SimpleHttpRequest generateTokenRequest(String authorizationCode) {
+            SimpleHttpRequest tokenRequest = super.generateTokenRequest(authorizationCode);
+            String overrideUri = System.getenv("MINECRAFT_IDP_REDIRECT_URI");
+            if (overrideUri != null && !overrideUri.isBlank()) {
+                tokenRequest.param(OAUTH2_PARAMETER_REDIRECT_URI, overrideUri);
+            }
+            return tokenRequest;
+        }
     }
 
     @Override
