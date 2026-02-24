@@ -3,12 +3,11 @@ package gg.grounds.keycloak.minecraft;
 import gg.grounds.keycloak.minecraft.api.MicrosoftAuthApi;
 import gg.grounds.keycloak.minecraft.api.MinecraftApi;
 import gg.grounds.keycloak.minecraft.api.XboxAuthApi;
-import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.broker.provider.util.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.KeycloakSession;
 
@@ -52,8 +51,7 @@ public class MinecraftIdentityProvider extends AbstractOAuth2IdentityProvider<Mi
         
         BrokeredIdentityContext user = new BrokeredIdentityContext(id, getConfig());
         user.setUsername(username);
-        user.setIdp(this);
-        
+
         return user;
     }
 
@@ -99,7 +97,6 @@ public class MinecraftIdentityProvider extends AbstractOAuth2IdentityProvider<Mi
 
                 // Create identity for Java Edition user
                 BrokeredIdentityContext identity = new BrokeredIdentityContext(profile.getFormattedUuid(), getConfig());
-                identity.setIdp(this);
                 identity.setUsername(profile.getName());
                 identity.setBrokerUserId(profile.getFormattedUuid());
                 
@@ -126,7 +123,6 @@ public class MinecraftIdentityProvider extends AbstractOAuth2IdentityProvider<Mi
                 String uniqueId = xboxUserId != null ? "xbox-" + xboxUserId : "xbox-" + xboxGamertag.hashCode();
                 
                 BrokeredIdentityContext identity = new BrokeredIdentityContext(uniqueId, getConfig());
-                identity.setIdp(this);
                 identity.setUsername(xboxGamertag);
                 identity.setBrokerUserId(uniqueId);
                 
@@ -161,12 +157,7 @@ public class MinecraftIdentityProvider extends AbstractOAuth2IdentityProvider<Mi
     }
 
     @Override
-    public Response performLogin(org.keycloak.broker.provider.AuthenticationRequest request) {
-        return super.performLogin(request);
-    }
-
-    @Override
-    public SimpleHttp authenticateTokenRequest(SimpleHttp tokenRequest) {
+    public SimpleHttpRequest authenticateTokenRequest(SimpleHttpRequest tokenRequest) {
         // Use POST body for client credentials (not Basic Auth)
         return tokenRequest
                 .param("client_id", getConfig().getClientId())
